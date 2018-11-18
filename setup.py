@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='django-rotating-backup',
-    version='0.0.3',
+    version='0.0.4',
     author='erik.de.wildt',
     author_email='erik.de.wildt@gmail.com',
     description="A simple Django app to make rotating backups of the Django database and media files.",
@@ -31,5 +31,6 @@ setup(
         'Programming Language :: Python :: 3',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
+        'Topic :: System :: Archiving :: Backup'
     ],
 )

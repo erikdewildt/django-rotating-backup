@@ -26,24 +26,30 @@ logger.addHandler(log_console)
 class RotatingBackup:
     """Main Class for Rotating Backup."""
 
-    destination_folder = None
+    # destination_folder = None
     hourly_folder = 'hourly'
     daily_folder = 'daily'
     weekly_folder = 'weekly'
     monthly_folder = 'monthly'
 
-    hours_to_keep = None
-    days_to_keep = None
-    weeks_to_keep = None
-    months_to_keep = None
-
-    sqlite_backup_copy_enabled = False
-    database_dumps_enabled = False
-    media_backups_enabled = False
+    # hours_to_keep = None
+    # days_to_keep = None
+    # weeks_to_keep = None
+    # months_to_keep = None
+    #
+    # sqlite_backup_copy_enabled = False
+    # database_dumps_enabled = False
+    # media_backups_enabled = False
+    # remote_sync_enabled = False
 
     sqlite_backup_copy_extension = 'sqlite3'
     database_dump_extension = 'sql.gz'
     media_backup_extension = 'tar.gz'
+
+    # rsync_host = None
+    # rsync_remote_path = None
+    # rsync_user = None
+    # rsync_pub_key = None
 
     now = datetime.now()
 
@@ -69,6 +75,14 @@ class RotatingBackup:
             self.database_dumps_enabled = os.environ.get('DRB_ENABLE_DATABASE_DUMPS',
                                                          settings.DRB_ENABLE_DATABASE_DUMPS)
             self.media_backups_enabled = os.environ.get('DRB_ENABLE_MEDIA_BACKUPS', settings.DRB_ENABLE_MEDIA_BACKUPS)
+
+            self.remote_sync_enabled = os.environ.get('DRB_ENABLE_REMOTE_SYNC', settings.DRB_ENABLE_REMOTE_SYNC)
+            if self.remote_sync_enabled:
+                self.rsync_host = os.environ.get('DRB_RSYNC_HOST', settings.DRB_RSYNC_HOST)
+                self.rsync_remote_path = os.environ.get('DRB_RSYNC_REMOTE_PATH', settings.DRB_RSYNC_REMOTE_PATH)
+                self.rsync_user = os.environ.get('DRB_RSYNC_USER', settings.DRB_RSYNC_USER)
+                self.rsync_pub_key = os.environ.get('DRB_RSYNC_PUB_KEY', settings.DRB_RSYNC_PUB_KEY)
+
         except AttributeError as error:
             raise DRBConfigException(f'Please verify if all settings have been correctly specified, error: {error}')
 
@@ -212,6 +226,20 @@ class RotatingBackup:
                 self.delete_old_files(destination=value['destination'], name=name,
                                       extension=extension, number_to_keep=value['retention'])
 
+    def sync_remote(self):
+        """Synchronise the remote server with local backup files."""
+        with open('/tmp/drb_ssh_pub_key', 'w') as ssh_pub_key_file:
+            ssh_pub_key_file.write(self.rsync_pub_key)
+
+        command = f'rsync -avz -e "ssh -i /tmp/drb_ssh_pub_key -o StrictHostKeyChecking=no ' \
+                  f'-o UserKnownHostsFile=/dev/null" ' \
+                  f'{self.destination_folder} {self.rsync_user}@{self.rsync_host}:{self.rsync_remote_path} ' \
+                  f'--stats -z'
+        sync_result = subprocess.run(['sh', '-c', command], stdout=subprocess.PIPE).stdout.decode('utf-8')
+        logger.info(f'Sync result: \n{sync_result}')
+
+        os.remove('/tmp/drb_ssh_pub_key')
+
     def run(self):
         """Run the actual hourly backup."""
         hour_pattern = self.now.strftime('%Y-%m-%d_%H')
@@ -262,6 +290,10 @@ class RotatingBackup:
             self.delete_old_files(destination=destination, name='media', extension=self.media_backup_extension,
                                   number_to_keep=self.hours_to_keep)
             self.archive(backup_file=backup_file)
+
+        # Call sync
+        if self.remote_sync_enabled:
+            self.sync_remote()
 
         # Finish backup
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

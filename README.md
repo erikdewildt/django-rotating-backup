@@ -38,7 +38,11 @@ over the settings configured in the settings.
 |DRB_ENABLE_SQLITE_BACKUP_COPY|Set to `True` to make backup copies for SQLite databases|
 |DRB_ENABLE_DATABASE_DUMPS|Set to `True` to enable SQL dumps of databases|
 |DRB_ENABLE_MEDIA_BACKUPS|Set to `True` to enable Media folder backups|
-
+|DRB_ENABLE_REMOTE_SYNC|Set to `True` to enable remote sync of backup files|
+|DRB_RSYNC_HOST|The remote host where to sync to|
+|DRB_RSYNC_REMOTE_PATH|The path on the remote server|
+|DRB_RSYNC_USER|The user to connect as|
+|DRB_RSYNC_PUB_KEY|The ssh public key to use|
 
 ## Example
 
@@ -58,4 +62,10 @@ DRB_DESTINATION_FOLDER = os.path.join(BASE_DIR, 'backups')
 DRB_ENABLE_SQLITE_BACKUP_COPY = True
 DRB_ENABLE_DATABASE_DUMPS = True
 DRB_ENABLE_MEDIA_BACKUPS = True
+
+DRB_ENABLE_REMOTE_SYNC = True
+DRB_RSYNC_HOST = '192.168.2.6'
+DRB_RSYNC_REMOTE_PATH = '/root/backup/'
+DRB_RSYNC_USER = 'root'
+DRB_RSYNC_PUB_KEY = 'ssh-rsa AAAAB3NzaC1yc2EAAAADA... ... ... I8cTYzu5rK+8P8Q== user@host
 ```
