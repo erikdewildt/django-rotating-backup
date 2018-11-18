@@ -1,0 +1,4 @@
+[pydocstyle]
+inherit = false
+ignore = D100,D101,D102,D105,D203,D212
+match_dir = ^(?!build).*

@@ -1,0 +1,4 @@
+[flake8]
+ignore=E501,W504
+exclude=django_rotating_backup.egg-info, dist, build
+max-complexity=12

@@ -1,0 +1,5 @@
+/django_rotating_backup.egg-info
+/dist
+/build
+__pycache__
+.DS_Store
