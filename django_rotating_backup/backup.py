@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import tarfile
 from datetime import datetime
+from pathlib import Path
 from shutil import copyfile
 
 from django.conf import settings
@@ -89,7 +90,7 @@ class RotatingBackup:
     def create_destination_folder(destination_folder=None):
         """Check if backup destination exists and create it if not."""
         if not os.path.exists(destination_folder):
-            os.mkdir(destination_folder)
+            Path(f'{destination_folder}').mkdir(parents=True, exist_ok=True)
             logger.info(f'Destination folder `{destination_folder}` did not exist and has been created.')
         else:
             logger.info(f'Using existing destination folder: `{destination_folder}`')
@@ -215,10 +216,9 @@ class RotatingBackup:
         """Run the actual hourly backup."""
         hour_pattern = self.now.strftime('%Y-%m-%d_%H')
 
-        self.create_destination_folder(destination_folder=self.destination_folder)
-
         # Create an hourly backup
         destination = f'{self.destination_folder}/{self.hourly_folder}'
+        self.create_destination_folder(destination_folder=destination)
 
         for database in settings.DATABASES.keys():
             # Make SQLite database copy

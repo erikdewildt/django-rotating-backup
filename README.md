@@ -16,11 +16,11 @@ This is a simple app to create rotating backups from the Django database and Med
 	```
 	INSTALLED_APPS = [
 	    ...
-	    'django-rotating-backup',
+	    'django_rotating_backup',
 	]
 	```
 
-3. Add `python manage.py django-rotating-backup` to a hourly cron job.
+3. Add `python manage.py create_backup` to a hourly cron job.
 
 4. Add settings to the django settings or use environment settings. Please not that environment variables have precedent
 over the settings configured in the settings.
@@ -48,7 +48,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ...
 
 # Settings for Django Rotating Backup
-DRB_BACKUP_HOURS_TO_KEEP = 2
+DRB_BACKUP_HOURS_TO_KEEP = 24
 DRB_BACKUP_DAYS_TO_KEEP = 7
 DRB_BACKUP_WEEKS_TO_KEEP = 4
 DRB_BACKUP_MONTHS_TO_KEEP = 3
