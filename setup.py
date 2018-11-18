@@ -12,10 +12,10 @@ setup(
     version='0.0.2',
     author='erik.de.wildt',
     author_email='erik.de.wildt@gmail.com',
-    description="A simple Django app to conduct rotating backups of the Django database and media files.",
+    description="A simple Django app to make rotating backups of the Django database and media files.",
     long_description=README,
     long_description_content_type="text/markdown",
-    url="https://www.github.com/erikdewildt/django_rotating_backup",
+    url="https://github.com/erikdewildt/django-rotating-backup",
     packages=find_packages(),
     license='GNU GENERAL PUBLIC LICENSE',
     classifiers=[
