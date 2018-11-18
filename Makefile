@@ -8,3 +8,6 @@ check:
 
 update_packages:
 	pip install -U -r requirements.txt
+
+upload_test:
+	twine upload --repository-url https://test.pypi.org/legacy/ dist/*

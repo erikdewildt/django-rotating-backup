@@ -4,3 +4,4 @@ pylint
 pylint-django
 flake8
 pydocstyle
+twine
