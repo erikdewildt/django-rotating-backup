@@ -65,7 +65,7 @@ DRB_ENABLE_MEDIA_BACKUPS = True
 
 DRB_ENABLE_REMOTE_SYNC = True
 DRB_RSYNC_HOST = '192.168.2.6'
-DRB_RSYNC_REMOTE_PATH = '/root/backup/'
-DRB_RSYNC_USER = 'root'
-DRB_RSYNC_PUB_KEY = 'ssh-rsa AAAAB3NzaC1yc2EAAAADA... ... ... I8cTYzu5rK+8P8Q== user@host
+DRB_RSYNC_REMOTE_PATH = '/home/backupuser/backup/'
+DRB_RSYNC_USER = 'backupuser'
+DRB_RSYNC_SSH_KEY = '/Users/backupuser/.ssh/id_rsa'
 ```

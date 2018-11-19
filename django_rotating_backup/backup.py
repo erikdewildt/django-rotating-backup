@@ -26,30 +26,14 @@ logger.addHandler(log_console)
 class RotatingBackup:
     """Main Class for Rotating Backup."""
 
-    # destination_folder = None
     hourly_folder = 'hourly'
     daily_folder = 'daily'
     weekly_folder = 'weekly'
     monthly_folder = 'monthly'
 
-    # hours_to_keep = None
-    # days_to_keep = None
-    # weeks_to_keep = None
-    # months_to_keep = None
-    #
-    # sqlite_backup_copy_enabled = False
-    # database_dumps_enabled = False
-    # media_backups_enabled = False
-    # remote_sync_enabled = False
-
     sqlite_backup_copy_extension = 'sqlite3'
     database_dump_extension = 'sql.gz'
     media_backup_extension = 'tar.gz'
-
-    # rsync_host = None
-    # rsync_remote_path = None
-    # rsync_user = None
-    # rsync_pub_key = None
 
     now = datetime.now()
 
@@ -81,7 +65,7 @@ class RotatingBackup:
                 self.rsync_host = os.environ.get('DRB_RSYNC_HOST', settings.DRB_RSYNC_HOST)
                 self.rsync_remote_path = os.environ.get('DRB_RSYNC_REMOTE_PATH', settings.DRB_RSYNC_REMOTE_PATH)
                 self.rsync_user = os.environ.get('DRB_RSYNC_USER', settings.DRB_RSYNC_USER)
-                self.rsync_pub_key = os.environ.get('DRB_RSYNC_PUB_KEY', settings.DRB_RSYNC_PUB_KEY)
+                self.rsync_ssh_key = os.environ.get('DRB_RSYNC_SSH_KEY', settings.DRB_RSYNC_SSH_KEY)
 
         except AttributeError as error:
             raise DRBConfigException(f'Please verify if all settings have been correctly specified, error: {error}')
@@ -181,6 +165,10 @@ class RotatingBackup:
 
     def make_media_backup(self, destination=None, pattern=None):
         """Make a media backup."""
+        if not settings.MEDIA_ROOT:
+            logger.warning(f'Media root is not set, please check your Django settings')
+            return False
+
         media_backup_filename = f'media_{pattern}.{self.media_backup_extension}'
         with tarfile.open(f'{destination}/{media_backup_filename}', "w:gz") as backup_file:
             for file in glob.iglob(f'{settings.MEDIA_ROOT}/**', recursive=True):
@@ -228,17 +216,12 @@ class RotatingBackup:
 
     def sync_remote(self):
         """Synchronise the remote server with local backup files."""
-        with open('/tmp/drb_ssh_pub_key', 'w') as ssh_pub_key_file:
-            ssh_pub_key_file.write(self.rsync_pub_key)
-
-        command = f'rsync -avz -e "ssh -i /tmp/drb_ssh_pub_key -o StrictHostKeyChecking=no ' \
+        command = f'rsync -avz -e "ssh -i {self.rsync_ssh_key} -o StrictHostKeyChecking=no ' \
                   f'-o UserKnownHostsFile=/dev/null" ' \
                   f'{self.destination_folder} {self.rsync_user}@{self.rsync_host}:{self.rsync_remote_path} ' \
                   f'--stats -z'
         sync_result = subprocess.run(['sh', '-c', command], stdout=subprocess.PIPE).stdout.decode('utf-8')
         logger.info(f'Sync result: \n{sync_result}')
-
-        os.remove('/tmp/drb_ssh_pub_key')
 
     def run(self):
         """Run the actual hourly backup."""
@@ -263,18 +246,21 @@ class RotatingBackup:
                     self.file_exists(destination=destination, name=database, pattern=hour_pattern,
                                      extension=self.database_dump_extension):
                 backup_file = self.make_database_dump(destination=destination, name=database, pattern=hour_pattern)
-                self.delete_old_files(destination=destination, name=database,
-                                      extension=self.database_dump_extension, number_to_keep=self.hours_to_keep)
-                self.archive(backup_file=backup_file)
+                if backup_file:
+                    self.delete_old_files(destination=destination, name=database,
+                                          extension=self.database_dump_extension, number_to_keep=self.hours_to_keep)
+                    self.archive(backup_file=backup_file)
 
             # Make PostgreSQL dump
             if self.is_postgresql(database) and self.database_dumps_enabled and not \
                     self.file_exists(destination=destination, name=database, pattern=hour_pattern,
                                      extension=self.database_dump_extension):
                 backup_file = self.make_database_dump(destination=destination, name=database, pattern=hour_pattern)
-                self.delete_old_files(destination=destination, name=database,
-                                      extension=self.database_dump_extension, number_to_keep=self.hours_to_keep)
-                self.archive(backup_file=backup_file)
+                if backup_file:
+                    self.delete_old_files(destination=destination, name=database,
+                                          extension=self.database_dump_extension,
+                                          number_to_keep=self.hours_to_keep)
+                    self.archive(backup_file=backup_file)
 
             # Give warning for unsupported database types
             if not (self.is_sqlite(database) or self.is_postgresql(database)):
@@ -287,9 +273,10 @@ class RotatingBackup:
                                                                extension=self.media_backup_extension):
             # Make media backup
             backup_file = self.make_media_backup(destination=destination, pattern=hour_pattern)
-            self.delete_old_files(destination=destination, name='media', extension=self.media_backup_extension,
-                                  number_to_keep=self.hours_to_keep)
-            self.archive(backup_file=backup_file)
+            if backup_file:
+                self.delete_old_files(destination=destination, name='media', extension=self.media_backup_extension,
+                                      number_to_keep=self.hours_to_keep)
+                self.archive(backup_file=backup_file)
 
         # Call sync
         if self.remote_sync_enabled:
