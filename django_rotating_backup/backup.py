@@ -35,12 +35,11 @@ class RotatingBackup:
     database_dump_extension = 'sql.gz'
     media_backup_extension = 'tar.gz'
 
-    now = datetime.now()
-
     def __init__(self):
         """Initialise the RotatingBackup class."""
         logger.debug('Start Initialisation.')
         self.parse_settings()
+        self.now = datetime.now()
         timestamp = self.now.strftime('%Y-%m-%d %H:%M:%S')
         logger.info(f'Backup started at: {timestamp}')
 
@@ -166,7 +165,7 @@ class RotatingBackup:
     def make_media_backup(self, destination=None, pattern=None):
         """Make a media backup."""
         if not settings.MEDIA_ROOT:
-            logger.warning(f'Media root is not set, please check your Django settings')
+            logger.warning('Media root is not set, please check your Django settings')
             return False
 
         media_backup_filename = f'media_{pattern}.{self.media_backup_extension}'
