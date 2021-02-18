@@ -1,5 +1,10 @@
+# Version 1.0.0
+Release date: 18-02-2021
+
+* Properly build environment to call pg_dump (Dominik George)
+
 # Version 0.0.6
-Release date: 5-12-2021
+Release date: 5-01-2021
 
 * Fixed issue with incorrect timestamps
 
