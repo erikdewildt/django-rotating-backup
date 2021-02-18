@@ -10,6 +10,7 @@ import tarfile
 from datetime import datetime
 from pathlib import Path
 from shutil import copyfile
+from tempfile import mkstemp
 
 from django.conf import settings
 
@@ -21,6 +22,51 @@ log_console = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)-8s - %(message)s')
 log_console.setFormatter(formatter)
 logger.addHandler(log_console)
+
+
+class PgEnvWrapper:
+    """
+    Context manager that updates the OS environment with the libpq variables
+    derived from settings, and if necessary a temporary .pgpass file.
+    """
+    def __init__(self, settings):
+        self.settings = settings
+        self.pgpass_path = None
+
+    def __enter__(self):
+        # Get all settings, with empty defaults to detect later
+        pghost = self.settings.get('HOST', None)
+        pgport = self.settings.get('PORT', None)
+        pguser = self.settings.get('USER', None)
+        pgdatabase = self.settings.get('NAME', None)
+        pgpassword = self.settings.get('PASSWORD', None)
+
+        # Set PG* environment variables for everything we got
+        # All defaults are thus left to libpq
+        env = os.environ.copy()
+        if pghost:
+            env['PGHOST'] = pghost
+        if pgport:
+            env['PGPORT'] = pgport
+        if pguser:
+            env['PGUSER'] = pguser
+        if pgdatabase:
+            env['PGDATABASE'] = pgdatabase
+
+        if pgpassword:
+            # Open a temporary file (safe name, mode 600) as .pgpass file
+            fd, self.pgpass_path = mkstemp(text=True)
+            os.close(fd)
+            with open(self.pgpass_path, 'w') as pgpass_file:
+                # Write a catch-all entry, as this .pgass is only used once and by us
+                pgpass_file.write(f'*:*:*:*:{pgpassword}\n')
+            env['PGPASSFILE'] = self.pgpass_path
+
+        return env
+
+    def __exit__(self, *args):
+        if self.pgpass_path:
+            os.unlink(self.pgpass_path)
 
 
 class RotatingBackup:
@@ -144,14 +190,9 @@ class RotatingBackup:
             logger.info(f'Created SQLite dump of database `{name}` to `{destination}/{dump_filename}`')
 
         if self.is_postgresql(name):
-            with gzip.open(f'{destination}/{dump_filename}', 'wb') as backup_file:
-                host = settings.DATABASES[name]['HOST'] if not settings.DATABASES[name]['HOST'] == '' else '127.0.0.1'
-                port = settings.DATABASES[name]['PORT'] if not settings.DATABASES[name]['PORT'] == '' else '5432'
-
-                cmd = ['sh', '-c', 'PGPASSWORD=' + str(settings.DATABASES[name]['PASSWORD']) + ' pg_dump -h ' + host +
-                       ' -p ' + port + ' -U ' + settings.DATABASES[name]['USER'] + ' ' +
-                       settings.DATABASES[name]['NAME']]
-                popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+            with (gzip.open(f'{destination}/{dump_filename}', 'wb') as backup_file,
+                  PgEnvWrapper(settings.DATABASES[name]) as env):
+                popen = subprocess.Popen(['pg_dump'], env=env, stdout=subprocess.PIPE, universal_newlines=True)
 
                 for stdout_line in iter(popen.stdout.readline, ''):
                     backup_file.write(stdout_line.encode('utf-8'))
